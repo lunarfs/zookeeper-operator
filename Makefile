@@ -17,7 +17,8 @@ TEST_REPO=testzkop/$(PROJECT_NAME)
 APP_REPO=pravega/$(APP_NAME)
 ALTREPO=emccorp/$(PROJECT_NAME)
 APP_ALTREPO=emccorp/$(APP_NAME)
-VERSION=$(shell git describe --always --tags --dirty | tr -d "v" | sed "s/\(.*\)-g`git rev-parse --short HEAD`/\1/")
+ZK_VERSION=3.5.8
+VERSION=$(shell git describe --always --tags --dirty | tr -d "v" | sed "s/\(.*\)-g`git rev-parse --short HEAD`/\1/")-${ZK_VERSION}
 GIT_SHA=$(shell git rev-parse --short HEAD)
 TEST_IMAGE=$(TEST_REPO)-testimages:$(VERSION)
 DOCKER_TEST_PASS=testzkop@123
@@ -49,7 +50,7 @@ build-go:
 		-o bin/$(EXPORTER_NAME)-windows-amd64.exe cmd/exporter/main.go
 
 build-image:
-	docker build --build-arg VERSION=$(VERSION) --build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) --build-arg GIT_SHA=$(GIT_SHA) -t $(REPO):$(VERSION) .
+	docker build --build-arg VERSION=$(VERSION) --build-arg ZK_VERSION=$(ZK_VERSION) --build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) --build-arg GIT_SHA=$(GIT_SHA) -t $(REPO):$(VERSION) .
 	docker tag $(REPO):$(VERSION) $(REPO):latest
 
 build-zk-image:
