@@ -408,7 +408,32 @@ Use the `make` command to build the Zookeeper image, please note that the smales
 ```
 $ make build-zk-image -e ZOOKEEPER_VERSION=3.5.8
 ```
-That will generate a Docker image with the format similar to the description above, you can then retag according to the naming conventions you wish to use and push it to your docker repository or use it locally.
+Example image after running `make build-zk-image -e ZOOKEEPER_VERSION=3.5.8`.
+
+The Zookeeper image will be available in your Docker environment.
+
+```
+$ docker images pravega/zookeeper
+
+REPOSITORY          TAG         IMAGE ID        CREATED         SIZE
+
+pravega/zookeeper   0.2.9-18    d1283cdd0df5    12 minutes ago  339MB
+
+pravega/zookeeper   latest      d1283cdd0df5    12 minutes ago  339MB
+
+```
+Optionally push it to a Docker registry.
+
+```
+docker tag pravega/zookeeper [REGISTRY_HOST]:[REGISTRY_PORT]/pravega/zookeeper
+docker push [REGISTRY_HOST]:[REGISTRY_PORT]/pravega/zookeeper
+```
+
+where:
+
+- `[REGISTRY_HOST]` is your registry host or IP (e.g. `registry.example.com`)
+- `[REGISTRY_PORT]` is your registry port (e.g. `5000`)
+
 
 ### Direct access to the cluster
 
