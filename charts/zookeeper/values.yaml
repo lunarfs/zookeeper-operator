@@ -2,7 +2,7 @@ replicas: 3
 
 image:
   repository: pravega/zookeeper
-  tag: 0.2.9
+  tag: 0.2.11
   pullPolicy: IfNotPresent
 
 domainName:
@@ -39,6 +39,16 @@ pod:
   # terminationGracePeriodSeconds: 30
   serviceAccountName: zookeeper
   # imagePullSecrets: []
+
+adminServerService: {}
+  # annotations: {}
+  # external: false
+
+clientService: {}
+  # annotations: {}
+
+headlessService: {}
+  # annotations: {}
 
 config: {}
   # initLimit: 10
@@ -85,3 +95,5 @@ hooks:
 
 containers: []
 volumes: []
+volumeMounts: []
+initContainers: []

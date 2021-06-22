@@ -12,6 +12,9 @@ package zk_test
 
 import (
 	"fmt"
+
+	log "github.com/sirupsen/logrus"
+
 	"strings"
 	"testing"
 
@@ -281,6 +284,37 @@ var _ = Describe("Generators Spec", func() {
 		})
 	})
 
+	Context("#MakeStatefulSet with init containers", func() {
+		var sts *appsv1.StatefulSet
+
+		Context("with defaults", func() {
+
+			BeforeEach(func() {
+				z := &v1beta1.ZookeeperCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example",
+						Namespace: "default",
+					},
+					Spec: v1beta1.ZookeeperClusterSpec{},
+				}
+				z.WithDefaults()
+				z.Spec.InitContainers = []v1.Container{
+					v1.Container{
+						Name:    "testing",
+						Image:   "dummy-image",
+						Command: []string{"sh", "-c", "ls;pwd"},
+					},
+				}
+				sts = zk.MakeStatefulSet(z)
+			})
+			It("Checking the init containers", func() {
+				log.Printf("init container is %v", sts.Spec.Template.Spec)
+				Ω(sts.Spec.Template.Spec.InitContainers[0].Name).To(Equal("testing"))
+				Ω(sts.Spec.Template.Spec.InitContainers[0].Image).To(Equal("dummy-image"))
+			})
+		})
+	})
+
 	Context("#MakeClientService", func() {
 		var s *v1.Service
 		var domainName string
@@ -296,6 +330,11 @@ var _ = Describe("Generators Spec", func() {
 					DomainName: domainName,
 					Labels: map[string]string{
 						"exampleLabel": "exampleValue",
+					},
+					ClientService: v1beta1.ClientServicePolicy{
+						Annotations: map[string]string{
+							"exampleAnnotation": "exampleValue",
+						},
 					},
 				},
 			}
@@ -318,13 +357,18 @@ var _ = Describe("Generators Spec", func() {
 		})
 
 		It("should not set the dns annotation", func() {
-			mapLength := len(s.GetAnnotations())
-			Ω(mapLength).To(Equal(0))
+			Expect(s.GetAnnotations()).NotTo(HaveKey("external-dns.alpha.kubernetes.io/hostname"))
 		})
 
 		It("should have custom labels set", func() {
 			Ω(s.GetLabels()).To(HaveKeyWithValue(
 				"exampleLabel",
+				"exampleValue"))
+		})
+
+		It("should have custom annotations set", func() {
+			Ω(s.GetAnnotations()).To(HaveKeyWithValue(
+				"exampleAnnotation",
 				"exampleValue"))
 		})
 	})
@@ -344,6 +388,11 @@ var _ = Describe("Generators Spec", func() {
 					DomainName: domainName,
 					Labels: map[string]string{
 						"exampleLabel": "exampleValue",
+					},
+					HeadlessService: v1beta1.HeadlessServicePolicy{
+						Annotations: map[string]string{
+							"exampleAnnotation": "exampleValue",
+						},
 					},
 				},
 			}
@@ -394,6 +443,12 @@ var _ = Describe("Generators Spec", func() {
 				"exampleLabel",
 				"exampleValue"))
 		})
+
+		It("should have custom annotations set", func() {
+			Ω(s.GetAnnotations()).To(HaveKeyWithValue(
+				"exampleAnnotation",
+				"exampleValue"))
+		})
 	})
 
 	Context("#MakeHeadlessService dnsname without dot", func() {
@@ -435,6 +490,11 @@ var _ = Describe("Generators Spec", func() {
 					Labels: map[string]string{
 						"exampleLabel": "exampleValue",
 					},
+					AdminServerService: v1beta1.AdminServerServicePolicy{
+						Annotations: map[string]string{
+							"exampleAnnotation": "exampleValue",
+						},
+					},
 				},
 			}
 			z.WithDefaults()
@@ -459,6 +519,40 @@ var _ = Describe("Generators Spec", func() {
 			Ω(s.GetLabels()).To(HaveKeyWithValue(
 				"exampleLabel",
 				"exampleValue"))
+		})
+
+		It("should have custom annotations set", func() {
+			Ω(s.GetAnnotations()).To(HaveKeyWithValue(
+				"exampleAnnotation",
+				"exampleValue"))
+		})
+
+		It("should have no LoadBalancer attached by default", func() {
+			Ω(s.Spec.Type).NotTo(Equal(v1.ServiceTypeLoadBalancer))
+		})
+	})
+
+	Context("#MakeAdminServerService external with LoadBalancer", func() {
+		var s *v1.Service
+
+		BeforeEach(func() {
+			z := &v1beta1.ZookeeperCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example",
+					Namespace: "default",
+				},
+				Spec: v1beta1.ZookeeperClusterSpec{
+					AdminServerService: v1beta1.AdminServerServicePolicy{
+						External: true,
+					},
+				},
+			}
+			z.WithDefaults()
+			s = zk.MakeAdminServerService(z)
+		})
+
+		It("should have LoadBalancer attached", func() {
+			Ω(s.Spec.Type).To(Equal(v1.ServiceTypeLoadBalancer))
 		})
 	})
 

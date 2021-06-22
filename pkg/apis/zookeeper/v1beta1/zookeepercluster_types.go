@@ -26,7 +26,7 @@ const (
 
 	// DefaultZkContainerVersion is the default tag used for for the zookeeper
 	// container
-	DefaultZkContainerVersion = "0.2.8"
+	DefaultZkContainerVersion = "0.2.11"
 
 	// DefaultZkContainerPolicy is the default container pull policy used
 	DefaultZkContainerPolicy = "Always"
@@ -79,7 +79,7 @@ const (
 
 // ZookeeperClusterSpec defines the desired state of ZookeeperCluster
 type ZookeeperClusterSpec struct {
-	// Image is the  container image. default is zookeeper:0.2.7
+	// Image is the  container image. default is zookeeper:0.2.10
 	Image ContainerImage `json:"image,omitempty"`
 
 	// Labels specifies the labels to attach to pods the operator creates for
@@ -99,6 +99,18 @@ type ZookeeperClusterSpec struct {
 	// Pod defines the policy to create pod for the zookeeper cluster.
 	// Updating the Pod does not take effect on any existing pods.
 	Pod PodPolicy `json:"pod,omitempty"`
+
+	// AdminServerService defines the policy to create AdminServer Service
+	// for the zookeeper cluster.
+	AdminServerService AdminServerServicePolicy `json:"adminServerService,omitempty"`
+
+	// ClientService defines the policy to create client Service
+	// for the zookeeper cluster.
+	ClientService ClientServicePolicy `json:"clientService,omitempty"`
+
+	// HeadlessService defines the policy to create headless Service
+	// for the zookeeper cluster.
+	HeadlessService HeadlessServicePolicy `json:"headlessService,omitempty"`
 
 	//StorageType is used to tell which type of storage we will be using
 	//It can take either Ephemeral or persistence
@@ -127,8 +139,14 @@ type ZookeeperClusterSpec struct {
 	// Containers defines to support multi containers
 	Containers []v1.Container `json:"containers,omitempty"`
 
+	// Init containers to support initialization
+	InitContainers []v1.Container `json:"initContainers,omitempty"`
+
 	// Volumes defines to support customized volumes
 	Volumes []v1.Volume `json:"volumes,omitempty"`
+
+	// VolumeMounts defines to support customized volumeMounts
+	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Probes specifies the timeout values for the Readiness and Liveness Probes
 	// for the zookeeper pods.
@@ -486,6 +504,26 @@ func (p *PodPolicy) withDefaults(z *ZookeeperCluster) (changed bool) {
 		changed = true
 	}
 	return changed
+}
+
+type AdminServerServicePolicy struct {
+	// Annotations specifies the annotations to attach to AdminServer service the operator
+	// creates.
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	External bool `json:"external,omitempty"`
+}
+
+type ClientServicePolicy struct {
+	// Annotations specifies the annotations to attach to client service the operator
+	// creates.
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
+type HeadlessServicePolicy struct {
+	// Annotations specifies the annotations to attach to headless service the operator
+	// creates.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 func (s *Probes) withDefaults() (changed bool) {

@@ -125,13 +125,6 @@ if [[ "$WRITE_CONFIGURATION" == true ]]; then
     echo $ZKCONFIG
     echo $MYID > $MYID_FILE
     echo "server.${MYID}=${ZKCONFIG}" > $DYNCONFIG
-  else
-    set -e
-    ZKURL=$(zkConnectionString)
-    CONFIG=`java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /root/zu.jar get-all $ZKURL`
-    echo Writing configuration gleaned from zookeeper ensemble
-    echo "$CONFIG" | grep -v "^version="> $DYNCONFIG
-    set +e
   fi
 fi
 
@@ -141,7 +134,7 @@ if [[ "$REGISTER_NODE" == true ]]; then
     ZKCONFIG=$(zkConfig)
     set -e
     echo Registering node and writing local configuration to disk.
-    java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /root/zu.jar add $ZKURL $MYID  $ZKCONFIG $DYNCONFIG
+    java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /opt/libs/zu.jar add $ZKURL $MYID  $ZKCONFIG $DYNCONFIG
     set +e
 fi
 

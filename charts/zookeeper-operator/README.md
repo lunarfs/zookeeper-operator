@@ -42,7 +42,7 @@ The following table lists the configurable parameters of the zookeeper-operator 
 | Parameter | Description | Default |
 | ----- | ----------- | ------ |
 | `image.repository` | Image repository | `pravega/zookeeper-operator` |
-| `image.tag` | Image tag | `0.2.9` |
+| `image.tag` | Image tag | `0.2.11` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `crd.create` | Create zookeeper CRD | `true` |
 | `rbac.create` | Create RBAC resources | `true` |
@@ -53,3 +53,6 @@ The following table lists the configurable parameters of the zookeeper-operator 
 | `nodeSelector` | Map of key-value pairs to be present as labels in the node in which the pod should run | `{}` |
 | `affinity` | Specifies scheduling constraints on pods | `{}` |
 | `tolerations` | Specifies the pod's tolerations | `[]` |
+| `additionalEnv` | Additional Environment Variables | `[]` |
+| `additionalSidecars` | Additional Sidecars Configuration | `[]` |
+| `additionalVolumes` | Additional volumes required for sidecars | `[]` |
