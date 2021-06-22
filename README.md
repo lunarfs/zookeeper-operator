@@ -402,6 +402,44 @@ where:
 - `[REGISTRY_HOST]` is your registry host or IP (e.g. `registry.example.com`)
 - `[REGISTRY_PORT]` is your registry port (e.g. `5000`)
 
+#### Build alternate zookeeper version
+Use the `make` command to build the Zookeeper image, please note that the smalest version supported is t 3.5.5.
+
+```
+$ make build-zk-image -e ZOOKEEPER_VERSION=3.5.8
+```
+Example image after running `make build-zk-image -e ZOOKEEPER_VERSION=3.5.8`.
+
+The Zookeeper image will be available in your Docker environment.
+
+```
+$ docker images pravega/zookeeper
+
+REPOSITORY          TAG         IMAGE ID        CREATED         SIZE
+
+pravega/zookeeper   0.2.9-18    d1283cdd0df5    12 minutes ago  339MB
+
+pravega/zookeeper   latest      d1283cdd0df5    12 minutes ago  339MB
+
+```
+Optionally push it to a Docker registry.
+
+```
+docker tag pravega/zookeeper [REGISTRY_HOST]:[REGISTRY_PORT]/pravega/zookeeper:0.2.9_3.5.8-18
+docker push [REGISTRY_HOST]:[REGISTRY_PORT]/pravega/zookeeper
+```
+
+where:
+
+- `[REGISTRY_HOST]` is your registry host or IP (e.g. `registry.example.com`)
+- `[REGISTRY_PORT]` is your registry port (e.g. `5000`)
+
+Remember to edit the values.yaml to reflect the new image
+```
+image:
+  repository: pravega/zookeeper
+  tag: 0.2.9_3.5.8-18
+```
 ### Direct access to the cluster
 
 For debugging and development you might want to access the Zookeeper cluster directly. For example, if you created the cluster with name `zookeeper` in the `default` namespace you can forward the Zookeeper port from any of the pods (e.g. `zookeeper-0`) as follows:
