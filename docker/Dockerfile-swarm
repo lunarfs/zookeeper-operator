@@ -8,5 +8,6 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 ARG DOCKER_REGISTRY
-FROM ${DOCKER_REGISTRY:+$DOCKER_REGISTRY/}zookeeper:3.6.1
+ARG ZOOKEEPER_VERSION
+FROM ${DOCKER_REGISTRY:+$DOCKER_REGISTRY/}zookeeper:${ZOOKEEPER_VERSION}
 COPY zoo.cfg.swarm /conf/zoo.cfg
