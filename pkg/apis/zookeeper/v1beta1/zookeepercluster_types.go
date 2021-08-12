@@ -26,7 +26,7 @@ const (
 
 	// DefaultZkContainerVersion is the default tag used for for the zookeeper
 	// container
-	DefaultZkContainerVersion = "0.2.11"
+	DefaultZkContainerVersion = "0.2.12"
 
 	// DefaultZkContainerPolicy is the default container pull policy used
 	DefaultZkContainerPolicy = "Always"
@@ -642,6 +642,11 @@ type ZookeeperConfig struct {
 	//
 	// The default value is false.
 	QuorumListenOnAllIPs bool `json:"quorumListenOnAllIPs,omitempty"`
+
+	// key-value map of additional zookeeper configuration parameters
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	AdditionalConfig map[string]string `json:"additionalConfig,omitempty"`
 }
 
 func (c *ZookeeperConfig) withDefaults() (changed bool) {

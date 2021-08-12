@@ -16,7 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"strings"
-	"testing"
 
 	"github.com/pravega/zookeeper-operator/pkg/apis/zookeeper/v1beta1"
 	"github.com/pravega/zookeeper-operator/pkg/utils"
@@ -29,11 +28,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestGenerators(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Generators Spec")
-}
 
 var _ = Describe("Generators Spec", func() {
 
@@ -52,6 +46,11 @@ var _ = Describe("Generators Spec", func() {
 					Spec: v1beta1.ZookeeperClusterSpec{
 						Labels: map[string]string{
 							"exampleLabel": "exampleValue",
+						},
+						Conf: v1beta1.ZookeeperConfig{
+							AdditionalConfig: map[string]string{
+								"tcpKeepAlive": "true",
+							},
 						},
 					},
 				}
@@ -96,6 +95,10 @@ var _ = Describe("Generators Spec", func() {
 
 				It("should set syncLimit to '2'", func() {
 					Ω(cfg).To(ContainSubstring("syncLimit=2\n"))
+				})
+
+				It("should set additional configuration tcpKeepAlive to 'true'", func() {
+					Ω(cfg).To(ContainSubstring("tcpKeepAlive=true\n"))
 				})
 
 				It("should have a dynamicConfigFile", func() {
