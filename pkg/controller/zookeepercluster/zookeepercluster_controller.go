@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -37,9 +38,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -71,7 +72,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to primary resource ZookeeperCluster
 	err = c.Watch(&source.Kind{Type: &zookeeperv1beta1.ZookeeperCluster{}},
-		&handler.EnqueueRequestForObject{})
+		&handler.EnqueueRequestForObject{}, predicate.GenerationChangedPredicate{})
 	if err != nil {
 		return err
 	}
@@ -79,7 +80,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &zookeeperv1beta1.ZookeeperCluster{},
-	})
+	}, predicate.GenerationChangedPredicate{})
 	if err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &zookeeperv1beta1.ZookeeperCluster{},
-	})
+	}, predicate.GenerationChangedPredicate{})
 	if err != nil {
 		return err
 	}
@@ -95,7 +96,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &zookeeperv1beta1.ZookeeperCluster{},
-	})
+	}, predicate.GenerationChangedPredicate{})
 	if err != nil {
 		return err
 	}
@@ -139,6 +140,16 @@ func (r *ReconcileZookeeperCluster) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, err
 	}
 	changed := instance.WithDefaults()
+	if instance.GetTriggerRollingRestart() {
+		r.log.Info("Restarting zookeeper cluster")
+		annotationkey, annotationvalue := getRollingRestartAnnotation()
+		if instance.Spec.Pod.Annotations == nil {
+			instance.Spec.Pod.Annotations = make(map[string]string)
+		}
+		instance.Spec.Pod.Annotations[annotationkey] = annotationvalue
+		instance.SetTriggerRollingRestart(false)
+		changed = true
+	}
 	if changed {
 		r.log.Info("Setting default settings for zookeeper-cluster")
 		if err := r.client.Update(context.TODO(), instance); err != nil {
@@ -164,6 +175,45 @@ func (r *ReconcileZookeeperCluster) Reconcile(request reconcile.Request) (reconc
 	return reconcile.Result{RequeueAfter: ReconcileTime}, nil
 }
 
+func getRollingRestartAnnotation() (string, string) {
+	return "restartTime", time.Now().Format(time.RFC850)
+}
+
+// compareResourceVersion compare resoure versions for the supplied ZookeeperCluster and StatefulSet
+// resources
+// Returns:
+//  0 if versions are equal
+// -1 if ZookeeperCluster version is less than StatefulSet version
+//  1 if ZookeeperCluster version is greater than StatefulSet version
+func compareResourceVersion(zk *zookeeperv1beta1.ZookeeperCluster, sts *appsv1.StatefulSet) int {
+
+	zkResourceVersion, zkErr := strconv.Atoi(zk.ResourceVersion)
+	stsVersion, stsVersionFound := sts.Labels["owner-rv"]
+
+	if !stsVersionFound {
+		if zkErr != nil {
+			log.Info("Fail to parse ZookeeperCluster version. Cannot decide zookeeper StatefulSet version")
+			return 0
+		}
+		return 1
+	}
+	stsResourceVersion, err := strconv.Atoi(stsVersion)
+	if err != nil {
+		if zkErr != nil {
+			log.Info("Fail to parse ZookeeperCluster version. Cannot decide zookeeper StatefulSet version")
+			return 0
+		}
+		log.Info("Fail to convert StatefulSet version %s to integer; setting it to ZookeeperCluster version", stsVersion)
+		return 1
+	}
+	if zkResourceVersion < stsResourceVersion {
+		return -1
+	} else if zkResourceVersion > stsResourceVersion {
+		return 1
+	}
+	return 0
+}
+
 func (r *ReconcileZookeeperCluster) reconcileStatefulSet(instance *zookeeperv1beta1.ZookeeperCluster) (err error) {
 
 	// we cannot upgrade if cluster is in UpgradeFailed
@@ -186,6 +236,13 @@ func (r *ReconcileZookeeperCluster) reconcileStatefulSet(instance *zookeeperv1be
 			}
 		} else if err != nil {
 			return err
+		} else {
+			foundServiceAccount.ImagePullSecrets = serviceAccount.ImagePullSecrets
+			r.log.Info("Updating ServiceAccount", "ServiceAccount.Namespace", serviceAccount.Namespace, "ServiceAccount.Name", serviceAccount.Name)
+			err = r.client.Update(context.TODO(), foundServiceAccount)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	sts := zk.MakeStatefulSet(instance)
@@ -201,6 +258,8 @@ func (r *ReconcileZookeeperCluster) reconcileStatefulSet(instance *zookeeperv1be
 		r.log.Info("Creating a new Zookeeper StatefulSet",
 			"StatefulSet.Namespace", sts.Namespace,
 			"StatefulSet.Name", sts.Name)
+		// label the RV of the zookeeperCluster when creating the sts
+		sts.Labels["owner-rv"] = instance.ResourceVersion
 		err = r.client.Create(context.TODO(), sts)
 		if err != nil {
 			return err
@@ -209,6 +268,14 @@ func (r *ReconcileZookeeperCluster) reconcileStatefulSet(instance *zookeeperv1be
 	} else if err != nil {
 		return err
 	} else {
+		// check whether zookeeperCluster is updated before updating the sts
+		cmp := compareResourceVersion(instance, foundSts)
+		if cmp < 0 {
+			return fmt.Errorf("Staleness: cr.ResourceVersion %s is smaller than labeledRV %s", instance.ResourceVersion, foundSts.Labels["owner-rv"])
+		} else if cmp > 0 {
+			// Zookeeper StatefulSet version inherits ZookeeperCluster resource version
+			foundSts.Labels["owner-rv"] = instance.ResourceVersion
+		}
 		foundSTSSize := *foundSts.Spec.Replicas
 		newSTSSize := *sts.Spec.Replicas
 		if newSTSSize != foundSTSSize {
@@ -313,7 +380,7 @@ func (r *ReconcileZookeeperCluster) clearUpgradeStatus(z *zookeeperv1beta1.Zooke
 	// when updating the CR below
 	status := z.Status.DeepCopy()
 
-	err = r.client.Status().Update(context.TODO(), z)
+	err = r.client.Update(context.TODO(), z)
 	if err != nil {
 		return err
 	}
@@ -722,7 +789,7 @@ func (r *ReconcileZookeeperCluster) cleanupOrphanPVCs(instance *zookeeperv1beta1
 
 func (r *ReconcileZookeeperCluster) getPVCList(instance *zookeeperv1beta1.ZookeeperCluster) (pvList corev1.PersistentVolumeClaimList, err error) {
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
-		MatchLabels: map[string]string{"app": instance.GetName()},
+		MatchLabels: map[string]string{"app": instance.GetName(), "uid": string(instance.UID)},
 	})
 	pvclistOps := &client.ListOptions{
 		Namespace:     instance.Namespace,

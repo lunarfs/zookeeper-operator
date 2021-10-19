@@ -12,7 +12,6 @@ package v1beta1_test
 
 import (
 	"fmt"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,11 +19,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func TestDeepcopy(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "ZookeeperCluster DeepCopy")
-}
 
 var _ = Describe("ZookeeperCluster DeepCopy", func() {
 	Context("with defaults", func() {
@@ -51,6 +45,19 @@ var _ = Describe("ZookeeperCluster DeepCopy", func() {
 						Name: "testvolume",
 					},
 				},
+				VolumeMounts: []v1.VolumeMount{
+					{
+						Name:      "testvolume",
+						MountPath: "/test/volume",
+					},
+				},
+				InitContainers: []v1.Container{
+					{
+						Name:    "testing",
+						Image:   "dummy-image",
+						Command: []string{"sh", "-c", "ls;pwd"},
+					},
+				},
 			}
 
 			z1.WithDefaults()
@@ -59,6 +66,9 @@ var _ = Describe("ZookeeperCluster DeepCopy", func() {
 			m := make(map[string]string)
 			m["key"] = "value"
 			z1.Annotations = m
+			z1.Spec.AdminServerService.Annotations = m
+			z1.Spec.ClientService.Annotations = m
+			z1.Spec.HeadlessService.Annotations = m
 			z1.Spec.Pod.NodeSelector = m
 			temp := *z1.DeepCopy()
 			z2 = &temp
@@ -118,6 +128,9 @@ var _ = Describe("ZookeeperCluster DeepCopy", func() {
 			z1.Spec.Probes.ReadinessProbe.InitialDelaySeconds = 5
 			z1.Spec.Probes.LivenessProbe.FailureThreshold = 2
 			z2.Spec.Probes = z1.Spec.Probes.DeepCopy()
+			z2.Spec.AdminServerService = *z1.Spec.AdminServerService.DeepCopy()
+			z2.Spec.ClientService = *z1.Spec.ClientService.DeepCopy()
+			z2.Spec.HeadlessService = *z1.Spec.HeadlessService.DeepCopy()
 		})
 		It("value of str1 and str2 should be equal", func() {
 			Ω(str2).To(Equal(str1))
@@ -163,6 +176,17 @@ var _ = Describe("ZookeeperCluster DeepCopy", func() {
 		It("checking status conditions", func() {
 			Ω(z2.Status.Conditions[0].Reason).To(Equal(z1.Status.Conditions[0].Reason))
 		})
+		It("checking InitContainer", func() {
+			Ω(z2.Spec.InitContainers[0].Name).To(Equal("testing"))
+		})
+		It("checking volume mounts", func() {
+			Ω(z2.Spec.VolumeMounts[0].Name).To(Equal("testvolume"))
+		})
+		It("checking service annotations", func() {
+			Ω(z2.Spec.AdminServerService.Annotations["key"]).To(Equal("value"))
+			Ω(z2.Spec.ClientService.Annotations["key"]).To(Equal("value"))
+			Ω(z2.Spec.HeadlessService.Annotations["key"]).To(Equal("value"))
+		})
 
 		It("checking for nil container image", func() {
 			var contimage *v1beta1.ContainerImage
@@ -193,6 +217,15 @@ var _ = Describe("ZookeeperCluster DeepCopy", func() {
 			var zooconfig *v1beta1.ZookeeperConfig
 			zooconfig2 := zooconfig.DeepCopy()
 			Ω(zooconfig2).To(BeNil())
+		})
+		It("checking for deepcopy for zookeeperconfig", func() {
+			var zkConfig = v1beta1.ZookeeperConfig{
+				AdditionalConfig: map[string]string{
+					"tcpKeepAlive": "true",
+				},
+			}
+			zkConfig2 := zkConfig.DeepCopy()
+			Ω(zkConfig2.AdditionalConfig["tcpKeepAlive"]).To(Equal("true"))
 		})
 		It("checking for nil clusterlist", func() {
 			var clusterlist *v1beta1.ZookeeperClusterList
@@ -289,5 +322,6 @@ var _ = Describe("ZookeeperCluster DeepCopy", func() {
 			Ω(z2.Spec.Probes.ReadinessProbe.InitialDelaySeconds).To(Equal(int32(0)))
 			Ω(z2.Spec.Probes.LivenessProbe.FailureThreshold).To(Equal(int32(1)))
 		})
+
 	})
 })

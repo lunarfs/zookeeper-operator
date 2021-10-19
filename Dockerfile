@@ -1,7 +1,6 @@
 ARG DOCKER_REGISTRY
-ARG GO_VERSION=1.13.8
-ARG ALPINE_VERSION=3.11
-FROM ${DOCKER_REGISTRY:+$DOCKER_REGISTRY/}golang:${GO_VERSION}-alpine${ALPINE_VERSION} as go-builder
+ARG ALPINE_VERSION=3.14
+FROM ${DOCKER_REGISTRY:+$DOCKER_REGISTRY/}golang:1.16-alpine${ALPINE_VERSION} as go-builder
 
 ARG PROJECT_NAME=zookeeper-operator
 ARG REPO_PATH=github.com/pravega/$PROJECT_NAME
@@ -13,7 +12,9 @@ ARG GIT_SHA=0000000
 WORKDIR /src
 COPY pkg ./pkg
 COPY cmd ./cmd
-COPY go.mod ./
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
 
 # Download all dependencies.
 RUN go mod download

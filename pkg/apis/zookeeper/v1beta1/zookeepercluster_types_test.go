@@ -12,7 +12,6 @@ package v1beta1_test
 
 import (
 	"fmt"
-	"testing"
 
 	"github.com/pravega/zookeeper-operator/pkg/apis/zookeeper/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,11 +22,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestV1beta1(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "ZookeeperCluster Types Spec")
-}
 
 var _ = Describe("ZookeeperCluster Types", func() {
 	var z v1beta1.ZookeeperCluster
@@ -61,6 +55,10 @@ var _ = Describe("ZookeeperCluster Types", func() {
 			Ω(z.Spec.Labels["release"]).To(Equal("example"))
 		})
 
+		It("should have a triggerRollingRestart set to false", func() {
+			Ω(z.GetTriggerRollingRestart()).To(Equal(false))
+		})
+
 		Context("Image", func() {
 			var i v1beta1.ContainerImage
 
@@ -81,7 +79,7 @@ var _ = Describe("ZookeeperCluster Types", func() {
 			})
 
 			It("Checking tostring() function", func() {
-				Ω(z.Spec.Image.ToString()).To(Equal("pravega/zookeeper:0.2.8"))
+				Ω(z.Spec.Image.ToString()).To(Equal("pravega/zookeeper:0.2.13"))
 			})
 
 		})
@@ -338,6 +336,19 @@ var _ = Describe("ZookeeperCluster Types", func() {
 
 		It("should have an admin-server port", func() {
 			Ω(p.AdminServer).To(BeEquivalentTo(8080))
+		})
+	})
+
+	Context("#TriggerRollingRestart is set", func() {
+		var t bool
+
+		BeforeEach(func() {
+			z.WithDefaults()
+			z.SetTriggerRollingRestart(true)
+			t = z.GetTriggerRollingRestart()
+		})
+		It("should return the value of triggerRollingRestart", func() {
+			Ω(t).To(BeEquivalentTo(true))
 		})
 	})
 })

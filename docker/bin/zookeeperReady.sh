@@ -25,8 +25,8 @@ OK=$(echo ruok | nc 127.0.0.1 $CLIENT_PORT)
 # Check to see if zookeeper service answers
 if [[ "$OK" == "imok" ]]; then
   set +e
-  nslookup $DOMAIN
-  if [[ $? -eq 1 ]]; then
+  getent hosts $DOMAIN
+  if [[ $? -ne 0 ]]; then
     set -e
     echo "There is no active ensemble, skipping readiness probe..."
     exit 0
@@ -75,9 +75,9 @@ if [[ "$OK" == "imok" ]]; then
       ROLE=participant
       ZKURL=$(zkConnectionString)
       ZKCONFIG=$(zkConfig)
-      java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /root/zu.jar remove $ZKURL $MYID
+      java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /opt/libs/zu.jar remove $ZKURL $MYID
       sleep 1
-      java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /root/zu.jar add $ZKURL $MYID $ZKCONFIG
+      java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /opt/libs/zu.jar add $ZKURL $MYID $ZKCONFIG
       exit 0
     else
       echo "Something has gone wrong. Unable to determine zookeeper role."

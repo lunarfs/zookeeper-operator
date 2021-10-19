@@ -1,50 +1,5 @@
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: zookeeperclusters.zookeeper.pravega.io
-spec:
-  group: zookeeper.pravega.io
-  names:
-    kind: ZookeeperCluster
-    listKind: ZookeeperClusterList
-    plural: zookeeperclusters
-    shortNames:
-    - zk
-    singular: zookeepercluster
-  scope: Namespaced
-  versions:
-  - additionalPrinterColumns:
-    - description: The number of ZooKeeper servers in the ensemble
-      jsonPath: .spec.replicas
-      name: Replicas
-      type: integer
-    - description: The number of ZooKeeper servers in the ensemble that are in a Ready
-        state
-      jsonPath: .status.readyReplicas
-      name: Ready Replicas
-      type: integer
-    - description: The current Zookeeper version
-      jsonPath: .status.currentVersion
-      name: Version
-      type: string
-    - description: The desired Zookeeper version
-      jsonPath: .spec.image.tag
-      name: Desired Version
-      type: string
-    - description: Client endpoint internal to cluster network
-      jsonPath: .status.internalClientEndpoint
-      name: Internal Endpoint
-      type: string
-    - description: Client endpoint external to cluster network via LoadBalancer
-      jsonPath: .status.externalClientEndpoint
-      name: External Endpoint
-      type: string
-    - jsonPath: .metadata.creationTimestamp
-      name: Age
-      type: date
-    name: v1beta1
-    schema:
-      openAPIV3Schema:
+{{- define "crd.openAPIV3Schema" }}
+openAPIV3Schema:
         description: ZookeeperCluster is the Schema for the zookeeperclusters API
         properties:
           apiVersion:
@@ -724,14 +679,15 @@ spec:
                             description: Protocol for port. Must be UDP, TCP, or SCTP.
                               Defaults to "TCP".
                             type: string
-                            default: TCP
                         required:
                         - containerPort
                         type: object
                       type: array
                       x-kubernetes-list-map-keys:
                       - containerPort
+                      {{- if semverCompare "< 1.18-0" .Capabilities.KubeVersion.GitVersion }}
                       - protocol
+                      {{- end }}
                       x-kubernetes-list-type: map
                     readinessProbe:
                       description: 'Periodic probe of container service readiness.
@@ -1873,14 +1829,15 @@ spec:
                             description: Protocol for port. Must be UDP, TCP, or SCTP.
                               Defaults to "TCP".
                             type: string
-                            default: TCP
                         required:
                         - containerPort
                         type: object
                       type: array
                       x-kubernetes-list-map-keys:
                       - containerPort
+                      {{- if semverCompare "< 1.18-0" .Capabilities.KubeVersion.GitVersion }}
                       - protocol
+                      {{- end }}
                       x-kubernetes-list-type: map
                     readinessProbe:
                       description: 'Periodic probe of container service readiness.
@@ -3590,7 +3547,6 @@ spec:
                       description: Protocol for port. Must be UDP, TCP, or SCTP. Defaults
                         to "TCP".
                       type: string
-                      default: TCP
                   required:
                   - containerPort
                   type: object
@@ -3660,7 +3616,7 @@ spec:
                   StorageType is Persistence storage
                 type: string
               triggerRollingRestart:
-                description: if set to true, triggers a cluster restart. this value should be set to false by the operator once the restart completes for all pods.
+                description: if set to true, triggers a cluster restart. this value will be auto-reverted to false by the operator once the restart is triggered.
                 type: boolean
               volumeMounts:
                 description: VolumeMounts defines to support customized volumeMounts
@@ -5212,7 +5168,4 @@ spec:
                 type: string
             type: object
         type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
+{{- end }}

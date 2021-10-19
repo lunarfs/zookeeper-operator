@@ -69,9 +69,9 @@ if [[ -n "$ENVOY_SIDECAR_STATUS" ]]; then
 fi
 set -e
 
-# Determine if there is a ensemble available to join by checking the service domain
+# Determine if there is an ensemble available to join by checking the service domain
 set +e
-nslookup $DOMAIN
+getent hosts $DOMAIN  # This only performs a dns lookup
 if [[ $? -eq 0 ]]; then
   ACTIVE_ENSEMBLE=true
 elif nslookup $DOMAIN | grep -q "server can't find $DOMAIN"; then
@@ -87,7 +87,7 @@ else
   do
     sleep 2
     ((count=count-1))
-    nslookup $DOMAIN
+    getent hosts $DOMAIN
     if [[ $? -eq 0 ]]; then
       ACTIVE_ENSEMBLE=true
       break
@@ -125,13 +125,6 @@ if [[ "$WRITE_CONFIGURATION" == true ]]; then
     echo $ZKCONFIG
     echo $MYID > $MYID_FILE
     echo "server.${MYID}=${ZKCONFIG}" > $DYNCONFIG
-  else
-    set -e
-    ZKURL=$(zkConnectionString)
-    CONFIG=`java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /root/zu.jar get-all $ZKURL`
-    echo Writing configuration gleaned from zookeeper ensemble
-    echo "$CONFIG" | grep -v "^version="> $DYNCONFIG
-    set +e
   fi
 fi
 
@@ -141,7 +134,7 @@ if [[ "$REGISTER_NODE" == true ]]; then
     ZKCONFIG=$(zkConfig)
     set -e
     echo Registering node and writing local configuration to disk.
-    java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /root/zu.jar add $ZKURL $MYID  $ZKCONFIG $DYNCONFIG
+    java -Dlog4j.configuration=file:"$LOG4J_CONF" -jar /opt/libs/zu.jar add $ZKURL $MYID  $ZKCONFIG $DYNCONFIG
     set +e
 fi
 
